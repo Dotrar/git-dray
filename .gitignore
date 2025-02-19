@@ -169,3 +169,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+.venv/
+./build/
+src/__pycache__
+src/dregit.egg-info
+>>>>>>> 0465f24 (Add stage, log, and basic git operations)

@@ -1,87 +1,120 @@
 from __future__ import annotations
+
+import asyncio
 import typing
-from collections.abc import Iterable
+
 import urwid
+from about import AboutPage
+from git_operations import GitHandler
+from log import LogPage
+from staging import StagingPage
 
 
-class Stageable:
-    pass
+def exit_program() -> None:
+    raise urwid.ExitMainLoop
 
 
-class Line(Stageable):
-    pass
+PageTypes = AboutPage | StagingPage | LogPage
 
 
-class Hunk(Stageable):
-    lines: list[Line]
+class Application(urwid.LineBox):
+    TITLE = "dregit"
 
-    def __init__(self, *lines: list[Line]) -> None:
-        self.lines = lines
+    pages: typing.ClassVar[dict[int, tuple[str, urwid.Widget]]] = {
+        "0": ("About", AboutPage),
+        "1": ("Staging", StagingPage),
+        "2": ("GitLog", LogPage),
+    }
 
-
-class File(Stageable):
-    hunks: list[Hunk]
-
-    def __init__(self, *hunks: list[Hunk]) -> None:
-        self.hunks = hunks
-
-
-class Directory(Stageable):
-    items: list[Directory | File]
-
-    def __init__(self, *args: list[Directory | File]) -> None:
-        self.items = args
-
-
-test_structure = Directory(
-    Directory(),
-    Directory(
-        Directory(File()),
-    ),
-)
-
-choices = "Chapman Cleese Gilliam Idle Jones Palin".split()
-
-
-def menu(title: str, choices_: Iterable[str]) -> urwid.ListBox:
-    body = [urwid.Text(title), urwid.Divider()]
-    for c in choices_:
-        button = urwid.Button(c)
-        urwid.connect_signal(button, "click", item_chosen, c)
-        body.append(urwid.AttrMap(button, None, focus_map="reversed"))
-    return urwid.ListBox(urwid.SimpleFocusListWalker(body))
-
-
-def item_chosen(button: urwid.Button, choice: str) -> None:
-    response = urwid.Text(["You chose ", choice, "\n"])
-    done = urwid.Button("Ok")
-    urwid.connect_signal(done, "click", exit_program)
-    main.original_widget = urwid.Filler(
-        urwid.Pile(
-            [
-                response,
-                urwid.AttrMap(done, None, focus_map="reversed"),
-            ]
+    def __init__(
+        self,
+    ) -> None:
+        super().__init__(self.pages["1"][1](), "press '0' for help", "left")
+        self.event_loop = asyncio.get_event_loop()
+        self.git = GitHandler()
+        self.main_loop = urwid.MainLoop(
+            self,
+            unhandled_input=self.unhandled_input,
+            event_loop=urwid.AsyncioEventLoop(loop=self.event_loop),
         )
-    )
+        self.background_tasks: set[asyncio.Task] = set()
+
+    def format_title(self, text: str) -> str:
+        if text:
+            return f" {self.TITLE} - {text} "
+        return self.TITLE
+
+    def run(self) -> None:
+        self.main_loop.run()
+
+    def add_background_task(self, task: typing.Awaitable | typing.Generator) -> None:
+        task = self.event_loop.create_task(task)
+        self.background_tasks.add(task)
+        task.add_done_callback(self.background_tasks.discard)
+
+    def cancel_all_background_tasks(self) -> None:
+        for task in self.background_tasks:
+            task.cancel()
+        self.background_tasks.clear()
+
+    def post_page_change_callback(self, page: PageTypes) -> None:
+        self.cancel_all_background_tasks()
+
+        if isinstance(page, LogPage):
+
+            async def sync_commit_log_to_page() -> None:
+                for commit in self.git.get_commit_log():
+                    page.load_commit_data(commit)
+                    self.event_loop.call_soon(self.main_loop.draw_screen)
+                    await asyncio.sleep(0.1)  # TODO: get more only when needed
+
+            self.add_background_task(sync_commit_log_to_page())
+
+        if isinstance(page, StagingPage):
+
+            async def gather_unstaged_changes() -> None:
+                for diff in self.git.get_unstaged_changes():
+                    page.add_unstaged_data(diff)
+                self.event_loop.call_soon(self.main_loop.draw_screen)
+                await asyncio.sleep(0)
+
+            self.add_background_task(gather_unstaged_changes())
+
+    def unhandled_input(self, key: str) -> None:
+        if key in self.pages:
+            title, wcls = self.pages[key]
+            self.set_title(title)
+            self.original_widget = wcls()
+            self.post_page_change_callback(self.original_widget)
+
+        elif key == "q":
+            self.cancel_all_background_tasks()
+            exit_program()
+
+        else:
+            handler = getattr(self.original_widget, "handle_key", lambda _: ())
+            handler(key)
+
+    # -------------------------------------------------------
+    # this is to fix a bug in urwid
+    @property
+    def original_widget(self) -> urwid.WrappedWidget:
+        return self._original_widget
+
+    @original_widget.setter
+    def original_widget(self, original_widget: urwid.WrappedWidget) -> None:
+        self._original_widget = original_widget
+        top, (middle, mopts), bottom = self._wrapped_widget.contents
+        left, (_, copts), right = middle.contents
+        middle.contents = [left, (self.original_widget, copts), right]
+        self._wrapped_widget.contents = [top, (middle, mopts), bottom]
+        self._invalidate()
 
 
-def exit_program(button: urwid.Button) -> None:
-    raise urwid.ExitMainLoop()
+def main() -> None:
+    app = Application()
+    app.run()
 
 
-main = urwid.Padding(menu("Pythons", choices), left=2, right=2)
-top = urwid.Overlay(
-    main,
-    urwid.SolidFill("\N{MEDIUM SHADE}"),
-    align=urwid.CENTER,
-    width=(urwid.RELATIVE, 60),
-    valign=urwid.MIDDLE,
-    height=(urwid.RELATIVE, 60),
-    min_width=20,
-    min_height=9,
-)
-
-urwid.MainLoop(
-    top,
-).run()
+if __name__ == "__main__":
+    main()

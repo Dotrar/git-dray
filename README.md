@@ -1,4 +1,4 @@
-# Dregitt (dg) Dre's Git tool
+# Dregit (dg) Dre's Git tool
 
 Simple git tool for precisely my purposes.
 
