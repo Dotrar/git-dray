@@ -18,9 +18,10 @@ PageTypes = AboutPage | StagingPage | LogPage
 
 
 class Application(urwid.LineBox):
-    TITLE = "dregit"
+    TITLE: str = "dregit"
+    QUIT: bool = False
 
-    pages: typing.ClassVar[dict[int, tuple[str, urwid.Widget]]] = {
+    pages: typing.ClassVar[dict[int, tuple[str, PageTypes]]] = {
         "0": ("About", AboutPage),
         "1": ("Staging", StagingPage),
         "2": ("GitLog", LogPage),
@@ -31,6 +32,7 @@ class Application(urwid.LineBox):
     ) -> None:
         opening_page = StagingPage()
         super().__init__(opening_page, "press '0' for help", "right")
+        self.QUIT = False
         self.event_loop = asyncio.get_event_loop()
         self.git = GitHandler()
         self.main_loop = urwid.MainLoop(
@@ -39,6 +41,7 @@ class Application(urwid.LineBox):
             event_loop=urwid.AsyncioEventLoop(loop=self.event_loop),
         )
         self.background_tasks: set[asyncio.Task] = set()
+        self.background_operations: list[asyncio.Task] = []
 
         # call this last to start the background staging change
         self.post_page_change_callback(opening_page)
@@ -70,19 +73,40 @@ class Application(urwid.LineBox):
                 for commit in self.git.get_commit_log():
                     page.load_commit_data(commit)
                     self.event_loop.call_soon(self.main_loop.draw_screen)
-                    await asyncio.sleep(0.1)  # TODO: get more only when needed
+                    await asyncio.sleep(0.01)  # TODO: get more only when needed
 
             self.add_background_task(sync_commit_log_to_page())
 
         if isinstance(page, StagingPage):
 
             async def gather_unstaged_changes() -> None:
-                for diff in self.git.get_unstaged_changes():
-                    page.add_unstaged_data(diff)
-                self.event_loop.call_soon(self.main_loop.draw_screen)
-                await asyncio.sleep(0)
+                for patch in self.git.get_unstaged_changes():
+                    page.add_unstaged_data(patch)
+                    await asyncio.sleep(0)
+
+            async def gather_staged_changes() -> None:
+                for patch in self.git.get_staged_changes():
+                    page.add_staged_data(patch)
+                    await asyncio.sleep(0)
+
+            async def poll_and_operate_git() -> None:
+                while True:
+                    for operation in page.get_pending_operations():
+                        print("doing operation", operation)
+                        self.git.do_operation(operation)
+                        await asyncio.sleep(0)
+                    if self.QUIT:
+                        break
+                    await asyncio.sleep(0)
 
             self.add_background_task(gather_unstaged_changes())
+            self.add_background_task(gather_staged_changes())
+            self.background_operation_poll = self.event_loop.create_task(poll_and_operate_git())
+
+    def quit(self) -> None:
+        self.cancel_all_background_tasks()
+        self.QUIT = True
+        exit_program()
 
     def unhandled_input(self, key: str) -> None:
         if key in self.pages:
@@ -92,12 +116,39 @@ class Application(urwid.LineBox):
             self.post_page_change_callback(self.original_widget)
 
         elif key == "q":
-            self.cancel_all_background_tasks()
-            exit_program()
+            self.quit()
 
         else:
             handler = getattr(self.original_widget, "handle_key", lambda _: ())
             handler(key)
+
+    def wait_for_operations(self) -> None:
+        if self.background_operation_poll.done():
+            return
+
+        print("Waiting for background operations to finish")
+        self.event_loop.run_until_complete(self.background_operation_poll)
+        # def spinner():
+        #     while True:
+        #         yield from "|/-\\"
+
+        # async def spinner_coro():
+        #     spinner = spinner()
+        #     while True:
+        #         sys.stdout.write(next(spinner))
+        #         sys.stdout.flush()
+        #         await asyncio.sleep(0.01)
+        #         sys.stdout.write("\r")
+
+        # async def final_wait():
+        #     spinner_ = self.event_loop.create_task(spinner_coro())
+        #     while (done,pending) := await asyncio.wait([self.background_operation_poll, spinner_]):
+        #         if len(pending) == 1:
+        #             break
+
+        # self.event_loop.run_until_complete(
+        #     self.event_loop.create_task(final_wait())
+        # )
 
     # -------------------------------------------------------
     # this is to fix a bug in urwid
@@ -118,6 +169,7 @@ class Application(urwid.LineBox):
 def main() -> None:
     app = Application()
     app.run()
+    app.wait_for_operations()
 
 
 if __name__ == "__main__":
