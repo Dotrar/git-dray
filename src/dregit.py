@@ -29,7 +29,8 @@ class Application(urwid.LineBox):
     def __init__(
         self,
     ) -> None:
-        super().__init__(self.pages["1"][1](), "press '0' for help", "left")
+        opening_page = StagingPage()
+        super().__init__(opening_page, "press '0' for help", "right")
         self.event_loop = asyncio.get_event_loop()
         self.git = GitHandler()
         self.main_loop = urwid.MainLoop(
@@ -38,6 +39,9 @@ class Application(urwid.LineBox):
             event_loop=urwid.AsyncioEventLoop(loop=self.event_loop),
         )
         self.background_tasks: set[asyncio.Task] = set()
+
+        # call this last to start the background staging change
+        self.post_page_change_callback(opening_page)
 
     def format_title(self, text: str) -> str:
         if text:

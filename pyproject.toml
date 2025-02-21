@@ -11,3 +11,4 @@ dependencies = [
 ]
 [project.scripts]
 dregit = "dregit:main"
+git-dray = "dregit:main"

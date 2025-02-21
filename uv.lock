@@ -50,6 +50,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "attrs" },
     { name = "pygit2" },
+    { name = "pyperclip" },
     { name = "urwid" },
 ]
 
@@ -57,6 +58,7 @@ dependencies = [
 requires-dist = [
     { name = "attrs", specifier = ">=25.1.0" },
     { name = "pygit2", specifier = ">=1.17.0" },
+    { name = "pyperclip", specifier = ">=1.9.0" },
     { name = "urwid", specifier = ">=2.6.16" },
 ]
 
@@ -93,6 +95,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/9f/62/51b84a6c80742e73ecd562f45234c6ef23e833864583bc759d8c6770f493/pygit2-1.17.0-cp313-cp313-win32.whl", hash = "sha256:1391762153af9715ed1d0586e3f207c518f03f5874e1f5b8e398697d006a0a82", size = 1219803 },
     { url = "https://files.pythonhosted.org/packages/7d/69/8dfe160c7166cec689d985e6efb52198c2c2fd5b722196e4beb920f9f460/pygit2-1.17.0-cp313-cp313-win_amd64.whl", hash = "sha256:d677d6fb85c426c5f5f8409bdc5a2e391016c99f73b97779b284c4ad25aa75fa", size = 1305156 },
 ]
+
+[[package]]
+name = "pyperclip"
+version = "1.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/30/23/2f0a3efc4d6a32f3b63cdff36cd398d9701d26cda58e3ab97ac79fb5e60d/pyperclip-1.9.0.tar.gz", hash = "sha256:b7de0142ddc81bfc5c7507eea19da920b92252b548b96186caf94a5e2527d310", size = 20961 }
 
 [[package]]
 name = "typing-extensions"
