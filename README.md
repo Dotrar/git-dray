@@ -13,3 +13,11 @@ Simple git tool for precisely my purposes.
 
 
 Everything else is best done by git itself
+
+# Installing
+
+`uv tool install .`
+or
+`pipx install .`
+
+add a `-e` to install as editable mode if you want to make changes

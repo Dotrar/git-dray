@@ -81,7 +81,6 @@ class BackgroundWorker:
         self.add_background_task(gather_staged_changes())
 
     def add_operation(self, op: GitOperation) -> None:
-        print("add operation", op)
         self.operations.append(op)
 
     def shutdown(self) -> list[asyncio.Task]:

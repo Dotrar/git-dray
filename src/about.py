@@ -1,4 +1,5 @@
 import urwid
+import typing
 
 
 class AboutPage(urwid.Filler):
