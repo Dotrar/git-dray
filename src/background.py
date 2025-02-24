@@ -1,4 +1,6 @@
 import asyncio
+import os
+import urwid
 import typing
 
 from log import LogPage
@@ -8,10 +10,11 @@ from dto import GitOperation
 
 
 class BackgroundWorker:
-    def __init__(self):
+    def __init__(self, main_loop: urwid.MainLoop):
         self.event_loop = asyncio.get_event_loop()
+        self.main_loop = main_loop
         self.background_tasks: set[asyncio.Task] = set()
-        self.git = GitHandler()  # optionally pass this in?
+        self.git = GitHandler(self.switch_to_editor_commit)
         self.operations: list[GitOperation] = []
         self.quiting = False
         self._post_data_callaback: typing.Callable[..., typing.Any] | None = None
@@ -28,6 +31,12 @@ class BackgroundWorker:
         if self.operations:
             return self.operations.pop(0)
         return None
+
+    def trigger_editor(self, path: str) -> None:
+        editor = os.environ.get("VISUAL") or os.environ.get("EDITOR") or "vi"
+        self.main_loop.stop()
+        os.system(" ".join([editor, path]))
+        self.main_loop.start()
 
     async def process_operations(self):
         while not self.quiting:
