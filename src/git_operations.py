@@ -60,41 +60,8 @@ class GitHandler:
             index.write()
             return
 
-    def _load_template(self) -> str:
-        config = self.repo.config
-        if "commit.template" not in config:
-            return
-        template_file = Path(config["commit.template"])
-        if not template_file.exists():
-            return
-        msg_file = Path(f"{self.repo.path}") / "COMMIT_EDITMSG"
-        with template_file.open("r") as tf:
-            with msg_file.open("w") as mf:
-                mf.write(tf.read())
-
-    def external_editor_git_message(self) -> str:
-        msg_file = Path(f"{self.repo.path}") / "COMMIT_EDITMSG"
-        if not self._load_template():
-            msg_file.open("w").write("")
-        self.editor_callback(str(msg_file))
-        return self._read_from_msg_file()
-
-    def _read_from_msg_file(self) -> str:
-        msg_file = Path(f"{self.repo.path}") / "COMMIT_EDITMSG"
-        return "\n".join(
-            line.strip() for line in msg_file.open("r").splitlines() if not line.startswith("#")
-        )
-
     def commit(self) -> None:
-        message = self.external_editor_git_message()
-        if not message:
-            return
-        index: git.Index = self.repo.index
-        author = git.Signature("Drebot", "dre.westcook@kraken.tech")
-        tree = index.write_tree()
-        parents = [self.repo.head.target]
-        self.repo.create_commit(self.repo.head.name, author, author, message, tree, parents)
-        self.staged_changes = set()
+        self.editor_callback()
 
     def amend(self) -> None:
         index: git.Index = self.repo.index
