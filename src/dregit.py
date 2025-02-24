@@ -61,6 +61,7 @@ class Application(urwid.LineBox):
         if isinstance(page, StagingPage):
             self.background.sync_staging_area_changes(page)
             page.give_operation_to(self.background.add_operation)
+            self.background.set_operation_callback(page.operation_callback)
 
     def quit(self) -> None:
         exit_program()

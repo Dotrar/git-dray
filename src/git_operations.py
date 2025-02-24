@@ -5,30 +5,22 @@ from dto import GitOperation, GitOperationType
 
 
 class GitHandler:
-    unstaged_changes: set[git.Patch]
-    staged_changes: set[git.Patch]
     operation_feed: typing.Callable | None
 
     def __init__(self, editor_callback) -> None:
         self.repo = git.Repository(".")
-        self.unstaged_changes = set()
-        self.staged_changes = set()
         self.operation_feed = None
 
         self.editor_callback = editor_callback
 
     def get_unstaged_changes(self) -> set[git.Patch]:
         diff: git.Diff = self.repo.index.diff_to_workdir()
-
-        self.unstaged_changes = set(diff)
-        return self.unstaged_changes
+        return set(diff)
 
     def get_staged_changes(self) -> list[git.Patch]:
         head_commit: git.Commit = self.repo[self.repo.head.target]
         diff: git.Diff = self.repo.index.diff_to_tree(head_commit.tree)
-
-        self.staged_changes = set(diff)
-        return self.staged_changes
+        return set(diff)
 
     def get_commit_log(self) -> typing.Iterable[git.Commit]:
         yield from self.repo.walk(self.repo.head.target)
@@ -68,7 +60,6 @@ class GitHandler:
         tree = index.write_tree()
         last_commit = self.repo[self.repo.head.target]
         self.repo.amend_commit(last_commit, self.repo.head.name, tree=tree)
-        self.staged_changes = set()
 
     def fixup(self, target: str) -> None:
         index: git.Index = self.repo.index
@@ -83,4 +74,3 @@ class GitHandler:
             tree,
             parents,
         )
-        self.staged_changes = set()
