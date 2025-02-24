@@ -45,7 +45,6 @@ class StagingPage(urwid.Pile):
             dto.GitOperationType.FIXUP,
         ]:
             self.staged.clear()
-            self.set_mode_unstaged()
             self.refresh_mode()
 
     def refresh_mode(self) -> None:
