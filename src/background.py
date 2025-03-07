@@ -37,10 +37,9 @@ class BackgroundWorker:
             return self.operations.pop(0)
         return None
 
-    def trigger_editor(self, path: str) -> None:
-        editor = os.environ.get("VISUAL") or os.environ.get("EDITOR") or "vi"
+    def switch_to_editor_commit(self, path: str) -> None:
         self.main_loop.stop()
-        os.system(" ".join([editor, path]))
+        os.system("git commit")
         self.main_loop.start()
 
     async def process_operations(self):
