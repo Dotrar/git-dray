@@ -23,7 +23,7 @@ class StagingPage(urwid.Pile):
         self,
     ) -> None:
         self.showing_unstaged = True
-        self.mode_widget = urwid.Text(self.UNSTAGED)
+        self.mode_widget = urwid.Text("Select items to stage")
         self.tree_widget = urwid.TreeListBox([])
         self.staged = set()
         self.unstaged = set()
@@ -35,7 +35,9 @@ class StagingPage(urwid.Pile):
             ]
         )
 
-    def give_operation_to(self, callable: typing.Callable[[dto.GitOperation], None]) -> None:
+    def give_operation_to(
+        self, callable: typing.Callable[[dto.GitOperation], None]
+    ) -> None:
         self.add_operation = callable
 
     def operation_callback(self, operation: dto.GitOperation) -> None:
@@ -66,11 +68,9 @@ class StagingPage(urwid.Pile):
         self.refresh_mode()
 
     def set_mode_staged(self) -> None:
-        self.mode_widget.set_text(self.STAGED)
         self.show_hunk_data(self.STAGED, self.staged)
 
     def set_mode_unstaged(self) -> None:
-        self.mode_widget.set_text(self.UNSTAGED)
         self.show_hunk_data(self.UNSTAGED, self.unstaged)
 
     def handle_key(self, key: str) -> None:

@@ -53,6 +53,7 @@ class GitHandler:
             return
 
     def commit(self) -> None:
+        breakpoint()
         self.editor_callback()
 
     def amend(self) -> None:

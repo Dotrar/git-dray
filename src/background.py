@@ -37,7 +37,7 @@ class BackgroundWorker:
             return self.operations.pop(0)
         return None
 
-    def switch_to_editor_commit(self, path: str) -> None:
+    def switch_to_editor_commit(self) -> None:
         self.main_loop.stop()
         os.system("git commit")
         self.main_loop.start()

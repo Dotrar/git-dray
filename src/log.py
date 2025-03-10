@@ -28,13 +28,17 @@ class CommitWidget(u.LineBox):
         )
 
     def expand(self) -> None:
+        # TODO: this whole page needs to be a tree widget
         if self.extended:
             return
         self.extended = True
         (head,) = self.pile.contents
         self.pile.contents = [
             head,
-            (u.Text("This is a much bigger thing"), ("pack", None)),
+            *list(
+                (u.Text(f"This is a much bigger thing {n}"), ("pack", None))
+                for n in range(10)
+            ),
         ]
 
     def contract(self) -> None:
@@ -72,7 +76,9 @@ class LogPage(u.Pile):
             ]
         )
 
-    def give_operation_to(self, callable: typing.Callable[[GitOperation], None]) -> None:
+    def give_operation_to(
+        self, callable: typing.Callable[[GitOperation], None]
+    ) -> None:
         self.add_operation = callable
 
     def load_commit_data(self, data: git.Commit) -> None:
