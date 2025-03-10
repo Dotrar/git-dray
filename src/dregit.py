@@ -16,6 +16,15 @@ def exit_program() -> None:
 
 PageTypes = AboutPage | StagingPage | LogPage
 
+palette = [
+    ("line-added", "dark green", "black"),
+    ("line-removed", "dark red", "black"),
+    ("line-normal", "white", "black"),
+    ("hunk-header", "dark blue", "black"),
+    ("patch-file", "dark magenta", "black"),
+    # ("tree-widget", "dark blue", "dark green"),
+]
+
 
 class Application(urwid.LineBox):
     TITLE: str = "dregit"
@@ -38,6 +47,7 @@ class Application(urwid.LineBox):
         self.QUIT = False
         self.main_loop = urwid.MainLoop(
             self,
+            palette,
             unhandled_input=self.unhandled_input,
             event_loop=urwid.AsyncioEventLoop(loop=asyncio.get_event_loop()),
         )

@@ -73,7 +73,7 @@ class StagingPage(urwid.Pile):
     def set_mode_unstaged(self) -> None:
         self.show_hunk_data(self.UNSTAGED, self.unstaged)
 
-    def handle_key(self, key: str) -> None:
+    def keypress(self, size, key: str) -> str | None:
         if key == "tab":
             self.toggle_mode()
         elif key == "c":
@@ -86,9 +86,34 @@ class StagingPage(urwid.Pile):
             self.unstage_selection()
         elif key == "=":
             self.expand_patch_or_hunk()
+        elif key == "n":
+            self.next_at_level()
+        elif key == "p":
+            self.prev_at_level()
+        elif key in ("h", "j", "k", "l"):
+            key = dict(h="left", j="down", k="up", l="right")[key]
+            return super().keypress(size, key)
         else:
-            return key
+            return super().keypress(size, key)
         return None
+
+    def next_at_level(self) -> None:
+        item: urwid.TreeNode = self.tree_widget.focus.get_node()
+        if next := item.next_sibling():
+            while next.get_widget().is_leaf:
+                next = next.next_sibling()
+                if next is None:
+                    return
+            self.tree_widget.body.set_focus(next)
+
+    def prev_at_level(self) -> None:
+        item: urwid.TreeNode = self.tree_widget.focus.get_node()
+        if next := item.prev_sibling():
+            while next.get_widget().is_leaf:
+                next = next.prev_sibling()
+                if next is None:
+                    return
+            self.tree_widget.body.set_focus(next)
 
     def expand_patch_or_hunk(self) -> None:
         item: urwid.TreeWidget = self.tree_widget.focus
@@ -146,6 +171,9 @@ class StagingPage(urwid.Pile):
     def unstage_hunk(self, original_patch: dto.DrePatch, hunk: dto.DreHunk) -> None:
         self.add_operation(dto.GitOperation.unstage(original_patch, hunk, None))
 
+        # TODO: change this so it's just one call to helper function
+        # TODO: don't call it hepler, it's just patch logic for this page
+
         self.staged.remove(original_patch)
         remaining_patch = helpers.remove_hunk_from_patch(original_patch, hunk)
         if remaining_patch:
@@ -196,4 +224,5 @@ class StagingPage(urwid.Pile):
         self.refresh_mode()
 
 
-# good resource for staging lines: https://github.com/nodegit/nodegit/pull/678/files
+# good resource for staging lines:
+#  https://github.com/nodegit/nodegit/pull/678/files

@@ -5,6 +5,12 @@ import typing
 import pygit2 as git
 import urwid
 
+LINE_ADDED = "line-added"
+LINE_REMOVED = "line-removed"
+LINE_NORMAL = "line-normal"
+HUNK_HEADER = "hunk-header"
+PATCH_FILE = "patch-file"
+
 
 class LineWidget(urwid.TreeWidget):
     """
@@ -19,7 +25,11 @@ class LineWidget(urwid.TreeWidget):
         return f"{line.type}{str(line.content).rstrip()}"
 
     def load_inner_widget(self) -> urwid.Text:
-        return urwid.Text(self.get_display_text(), wrap="ellipsis")
+        line: dto.DreLine = self.get_node().get_value()
+        return urwid.AttrMap(
+            urwid.Text(self.get_display_text(), wrap="ellipsis"),
+            {"-": LINE_REMOVED, "+": LINE_ADDED}.get(line.type, LINE_NORMAL),
+        )
 
 
 class ULineWidget(LineWidget):
@@ -42,11 +52,19 @@ class HunkWidget(urwid.TreeWidget):
         hunk: dto.DreHunk = self.get_node().get_value()
         return hunk.header.rstrip()
 
+    def load_inner_widget(self) -> urwid.Text:
+        widget = super().load_inner_widget()
+        return urwid.AttrMap(widget, HUNK_HEADER)
+
 
 class PatchWidget(urwid.TreeWidget):
     def get_display_text(self) -> str:
         patch: dto.DrePatch = self.get_node().get_value()
         return patch.filepath
+
+    def load_inner_widget(self) -> urwid.Text:
+        widget = super().load_inner_widget()
+        return urwid.AttrMap(widget, PATCH_FILE)
 
 
 class LineNode(urwid.ParentNode):

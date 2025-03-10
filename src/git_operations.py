@@ -2,6 +2,7 @@ import typing
 
 import pygit2 as git
 from dto import GitOperation, GitOperationType
+import re
 
 
 class GitHandler:
@@ -45,12 +46,46 @@ class GitHandler:
 
     def stage(self, operation: GitOperation) -> None:
         index: git.Index = self.repo.index
+        filepath = operation.patch.filepath
 
         if not operation.hunk:
             # add all hunks / just add the whole change
-            index.add(operation.patch.filepath)
+            index.add(filepath)
             index.write()
             return
+        # just add the whole hunk.
+        # 1. read the file from commit as blob
+        index.read()
+        old_entry = index[filepath]
+        old_blob = self.repo[old_entry.id]
+
+        # get hunk area
+        match = re.match(r"@@ -(\d),(\d)", operation.hunk.header)
+        if match is None:
+            raise ValueError("problem with git")
+        start, end = (int(n) for n in match.groups())
+        end += start
+
+        # make a new blob data
+        new_data = []
+
+        old_data = old_blob.data.decode().splitlines()
+        new_data.extend(old_data[:start])
+        for line in operation.hunk.lines:
+            if line.type == "-":
+                continue
+            content = line.content
+            if content.endswith("\n"):
+                content = content[:-1]
+            new_data.append(content)
+        new_data.extend(old_data[end:])
+
+        new_blob_id = self.repo.create_blob("\n".join(new_data).encode())
+        entry = git.IndexEntry(filepath, new_blob_id, git.enums.FileMode.BLOB)
+        index.remove(filepath)
+        index.write()
+        index.add(entry)
+        index.write()
 
     def commit(self) -> None:
         breakpoint()
